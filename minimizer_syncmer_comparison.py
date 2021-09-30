@@ -27,6 +27,9 @@ def get_kmer_minimizers(seq, k_size, w_size):
 
 def get_kmer_syncmers(seq, k_size, s_size):
     w = k_size - s_size
+
+    # get t, the position of s-mer
+    # t is chosen to be in the middle of k-mer for chosen syncmer
     diff=k_size-s_size
     if diff %2==0:
         t=diff/2
@@ -61,7 +64,6 @@ def get_kmer_syncmers(seq, k_size, s_size):
 
 
 def minimizer_syncmer_comparison():
-    # CTGACCGTAC
     k_size = 5
     w_size = k_size + 2
     # seq = "CTGACCGTAC"
