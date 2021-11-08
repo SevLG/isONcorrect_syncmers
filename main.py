@@ -91,14 +91,6 @@ def calculate_coverage(k_mers, k_size, seq_length):
 def main():
     seq_len = 2000
     k = 15
-    w = k + 10
-    s = 5
-    seq, sim_reads, mini, sync, sim_reads_minis, sim_reads_syncs = test_setup(seq_len, k, w, s)
-    for read in sim_reads_syncs:
-        print(read)
-    '''
-    seq_len = 2000
-    k = 15
     w = k+10
     s = 5
     n = 5
@@ -161,7 +153,6 @@ def main():
         "Comparison of percentage of covered sequence between minimizer\n and syncmer methods at different error rates")
     plt.savefig("covered_seq_minis_vs_syncs")
     plt.show()
-    '''
 
 main()
 
