@@ -25,7 +25,7 @@ def get_kmer_minimizers(seq, k_size, w_size):
 
     return minimizers
 
-def get_kmer_syncmers(seq, k_size, s_size):
+def get_kmer_syncmers_window_exclusive(seq, k_size, s_size):
     w = k_size - s_size
 
     # get t, the position of s-mer
@@ -59,20 +59,45 @@ def get_kmer_syncmers(seq, k_size, s_size):
 
     return syncmers
 
+def get_kmer_syncmers(seq, k_size, s_size):
+    w = k_size - s_size
+
+    # get t, the position of s-mer
+    # t is chosen to be in the middle of k-mer for chosen syncmer
+    diff=k_size-s_size
+    if diff %2==0:
+        t=diff/2
+    else:
+        t=(diff+1)/2
+    t -= 1
+    syncmers = []
+    # get list of all s-mers in first k-mer
+    kmer_smers = deque([seq[i:i + s_size] for i in range(w + 1)])
+    for i in range(len(seq) - k_size):
+        # add new syncmer to list if its smallest s-mer is at place t
+        if list(kmer_smers).index(min(kmer_smers)) == t:
+            syncmers.append((seq[i:i+k_size], i))
+        # move the window one step to the right by popping the leftmost
+        # s-mer and adding one to the right
+        kmer_smers.popleft()
+        kmer_smers.append(seq[i+k_size-s_size+1:i+k_size+1])
+
+    return syncmers
 
 
 
 
 def minimizer_syncmer_comparison():
-    k_size = 5
+    k_size = 9
     w_size = k_size + 2
     # seq = "CTGACCGTAC"
-    seq = "GTATCGGCATTACTGACACGAATCGTCAG"
+    # seq = "GTATCGGCATTACTGACACGAATCGTCAG"
+    seq = "CTGGAATCTTAACTGACTGAATCGCTTCGATATATGACTAGCATTCATGC"
     print("Sequence: " + seq)
     minimizers = get_kmer_minimizers(seq,k_size,w_size)
     print("Minimizers:")
     print(minimizers)
-    s_size = 2
+    s_size = 4
     syncmers = get_kmer_syncmers(seq,k_size,s_size)
     print("Syncmers:")
     print(syncmers)
