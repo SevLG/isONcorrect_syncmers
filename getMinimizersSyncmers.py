@@ -25,6 +25,8 @@ def get_kmer_minimizers(seq, k_size, w_size):
 
     return minimizers
 
+
+# old syncmer algo, which only allows for one k-mer per window
 def get_kmer_syncmers_window_exclusive(seq, k_size, s_size):
     w = k_size - s_size
 
