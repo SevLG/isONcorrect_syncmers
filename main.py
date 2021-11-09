@@ -73,6 +73,9 @@ def main():
     k = 15
     w = k + 10
     s = 5
+    # t = -1 gives the default original syncmer algo where the s-mer is in the middle of the k-mer
+    t = -1
+    # s = 9
     # t = 3
     n = 5
 
