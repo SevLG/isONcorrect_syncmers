@@ -135,11 +135,12 @@ def main():
         # "main" result list each outer iteration
         mini_covered_inner_list = []
         sync_covered_inner_list = []
+        
+        # iterate n times to get n different ratios for the same error level
         for i in range(n):
             seq = generateTestCasesAlt.generate_random_sequence_by_length(seq_len)
             seq_error = generate_error_sequence(seq, round((error+1)/100, 2))
 
-            # iterate n times to get n different ratios for the same error level
             mini = getMinimizersSyncmers.get_kmer_minimizers(seq, k, w)
             mini_error = getMinimizersSyncmers.get_kmer_minimizers(seq_error, k, w)
             mini_shared = get_shared_kmers(mini,mini_error)
