@@ -1,6 +1,7 @@
 import generateTestCasesAlt
 import getMinimizersSyncmers
 from matplotlib import pyplot as plt
+import matplotlib.ticker as mtick
 
 # searches through kmer_list and compares a k-mer with all k-mers in the list, returns true if found
 # otherwise false.
@@ -49,11 +50,13 @@ def ratio_preserved_kmers(kmers, error_read_kmers):
 
     return ratio
 
-# calculates the amount of characters covered by a set of kmers.
+# calculates both the ratio of covered mers compared to an entire sequence, as well as
+# the ratio of covered mers per kmer.
 # this is done by adding the k-value to the total every time two kmer strings don't intersect.
 # if they intersect we add the difference between their indices.
-# the total is then divided by the original sequence length
-def calculate_coverage(kmers, k_size, seq_length):
+# returns the total divided by the original sequence length as well as
+# the total divided by the number of kmers
+def ratio_covered_seq(kmers, k_size, seq_length):
     nr_of_covered_chars = k_size
 
     for i in range(1,len(kmers)):
@@ -64,34 +67,56 @@ def calculate_coverage(kmers, k_size, seq_length):
         else:
             nr_of_covered_chars += k_size
 
-    return nr_of_covered_chars / seq_length
+    return nr_of_covered_chars / seq_length, nr_of_covered_chars / len(kmers)
+
+def get_list_averages(lst, n):
+    res = []
+    for i in range(len(lst)):
+        sum = 0
+        for e in lst[i]:
+            sum += e
+        res.append(sum / n)
+
+    return res
+
+def ratio_to_percent_lst(lst):
+    res_lst = []
+    for val in lst:
+        res_lst.append(val*100)
+    return res_lst
 
 
 def main():
     # presets for easy modification
-    seq_len = 5000
+    seq_len = 2000
     k = 15
     w = k + 10
+    # syncmer algo in getMinimizersSyncmers was modified to take t parameter. If t = -1 it will still
+    # use the middle position as previously, otherwise it will use the given positio of t to determine
+    # s-mer position
     s = 5
-    # t = -1 gives the default original syncmer algo where the s-mer is in the middle of the k-mer
     t = -1
-    # s = 9
-    # t = 3
+
+    # From eyeing over Edgar's paper he appeared to get the best results at k = 15 with s = 9 and t = 3.
+    # Plugging in these parameters appears to make % of preserved kmers slightly bettter,
+    # % of covered sequence a lot better, but number of mers covered per kmer worse
+    #s = 9
+    #t = 3
     n = 5
 
     # separate the different parts for ease of reading
     # first we will generate the ratios of conserved kmers
 
     # results for the ratio will be appended to these lists
-    ratio_preserved_minis = []
-    ratio_preserved_syncs = []
+    mini_preserved_ratio = []
+    sync_preserved_ratio = []
 
     # one iteration for each error level 1-10%
     for error in range(10):
         # temporary lists to save the results of inner iteration, will be appended to the
         # "main" result list each outer iteration
-        ratio_preserved_minis_inner_list = []
-        ratio_preserved_syncs_inner_list = []
+        mini_preserved_ratio_inner = []
+        sync_preserved_ratio_inner = []
 
         # iterate n times to get n different ratios for the same error level
         for i in range(n):
@@ -100,45 +125,41 @@ def main():
 
             mini = getMinimizersSyncmers.get_kmer_minimizers(seq,k,w)
             mini_error = getMinimizersSyncmers.get_kmer_minimizers(seq_error,k,w)
-            ratio_preserved_minis_inner_list.append(ratio_preserved_kmers(mini, mini_error))
+            mini_preserved_ratio_inner.append(ratio_preserved_kmers(mini, mini_error))
 
             sync = getMinimizersSyncmers.get_kmer_syncmers(seq,k,s,t)
             sync_error = getMinimizersSyncmers.get_kmer_syncmers(seq_error, k, s, t)
-            ratio_preserved_syncs_inner_list.append(ratio_preserved_kmers(sync, sync_error))
+            sync_preserved_ratio_inner.append(ratio_preserved_kmers(sync, sync_error))
 
         # append inner list to outer
-        ratio_preserved_minis.append(ratio_preserved_minis_inner_list)
-        ratio_preserved_syncs.append(ratio_preserved_syncs_inner_list)
+        mini_preserved_ratio.append(mini_preserved_ratio_inner)
+        sync_preserved_ratio.append(sync_preserved_ratio_inner)
 
     # get the average of the results by adding them together and dividing by n
-    ratio_preserved_minis_avg = []
-    ratio_preserved_syncs_avg = []
-    for i in range(10):
-        sum = 0
-        for e in ratio_preserved_minis[i]:
-            sum += e
-        ratio_preserved_minis_avg.append(sum/n)
-
-        sum = 0
-        for e in ratio_preserved_syncs[i]:
-            sum += e
-        ratio_preserved_syncs_avg.append(sum / n)
+    mini_preserved_ratio_avg = get_list_averages(mini_preserved_ratio,n)
+    sync_preserved_ratio_avg = get_list_averages(sync_preserved_ratio,n)
 
 
 
     # in this section we generate the ratio of covered mers covered by
     # the kmers shared from an original read and an error read
-    mini_coverage = []
-    sync_coverage = []
+    mini_covered_seq = []
+    sync_covered_seq = []
+
+    mini_covered_per_kmer = []
+    sync_covered_per_kmer = []
 
     # one iteration for each error level 1-10%
     for error in range(10):
 
         # temporary lists to save the results of inner iteration, will be appended to the
         # "main" result list each outer iteration
-        mini_covered_inner_list = []
-        sync_covered_inner_list = []
-        
+        mini_covered_seq_inner = []
+        sync_covered_seq_inner = []
+
+        mini_covered_per_kmer_inner = []
+        sync_covered_per_kmer_inner = []
+
         # iterate n times to get n different ratios for the same error level
         for i in range(n):
             seq = generateTestCasesAlt.generate_random_sequence_by_length(seq_len)
@@ -147,57 +168,72 @@ def main():
             mini = getMinimizersSyncmers.get_kmer_minimizers(seq, k, w)
             mini_error = getMinimizersSyncmers.get_kmer_minimizers(seq_error, k, w)
             mini_shared = get_shared_kmers(mini,mini_error)
-            mini_covered_inner_list.append(calculate_coverage(mini_shared,k,seq_len))
+            # calculate coverage was modified to return both the ratio of covered sequence
+            # as well as ratio of coverage per kmer. Save them temporarily in *_res1, *_res2
+            # to append afterwards
+            mini_res1, mini_res2 = ratio_covered_seq(mini_shared, k, seq_len)
+            mini_covered_seq_inner.append(mini_res1)
+            mini_covered_per_kmer_inner.append(mini_res2)
 
             sync = getMinimizersSyncmers.get_kmer_syncmers(seq, k, s, t)
             sync_error = getMinimizersSyncmers.get_kmer_syncmers(seq_error, k, s, t)
             sync_shared = get_shared_kmers(sync,sync_error)
-            sync_covered_inner_list.append(calculate_coverage(sync_shared,k,seq_len))
+            sync_res1, sync_res2 = ratio_covered_seq(sync_shared, k, seq_len)
+            sync_covered_seq_inner.append(sync_res1)
+            sync_covered_per_kmer_inner.append(sync_res2)
+
 
         # append inner list to outer
-        mini_coverage.append(mini_covered_inner_list)
-        sync_coverage.append(sync_covered_inner_list)
+        mini_covered_seq.append(mini_covered_seq_inner)
+        sync_covered_seq.append(sync_covered_seq_inner)
+
+        mini_covered_per_kmer.append(mini_covered_per_kmer_inner)
+        sync_covered_per_kmer.append(sync_covered_per_kmer_inner)
 
     # get the average of the results by adding them together and dividing by n
-    mini_coverage_avg = []
-    sync_coverage_avg = []
-    for i in range(10):
-        sum = 0
-        for e in mini_coverage[i]:
-            sum += e
-        mini_coverage_avg.append(sum/n)
+    mini_coverage_avg = get_list_averages(mini_covered_seq,n)
+    sync_coverage_avg = get_list_averages(sync_covered_seq, n)
 
-        sum = 0
-        for e in sync_coverage[i]:
-            sum += e
-        sync_coverage_avg.append(sum / n)
-
+    mini_covered_per_kmer_avg = get_list_averages(mini_covered_per_kmer,n)
+    sync_covered_per_kmer_avg = get_list_averages(sync_covered_per_kmer, n)
 
     x = []
     for i in range(10):
-        x.append(round(1 - (i + 1) / 100, 2))
+        x.append(str(i+1)+"%")
     xi = list(range(len(x)))
-    plt.plot(ratio_preserved_minis_avg, marker='o', color='blue', linestyle='None')
-    plt.plot(ratio_preserved_syncs_avg, marker='o', color='red', linestyle='None')
-    # plt.hlines(y=0, xmin=-0.1, xmax=1, color=colors[4], linestyles=(0, (1, 5)))
-    # plt.xlim([-0.1, 1])
-    plt.ylim([0,1])
+
+    plt.plot(ratio_to_percent_lst(mini_preserved_ratio_avg), marker='o', color='blue', linestyle='None')
+    plt.plot(ratio_to_percent_lst(sync_preserved_ratio_avg), marker='o', color='red', linestyle='None')
+    plt.ylim([0,100])
     plt.xticks(xi, x)
     plt.legend(["Minimizers", "Syncmers"])
     plt.title("Comparison of preserved k-mers between minimizer\n and syncmer methods at different error rates")
+    plt.xlabel("Error rate")
+    plt.ylabel("Percentage of preserved mers")
     plt.savefig("preserved_kmers_mini_vs_sync")
     plt.show()
 
-    plt.plot(mini_coverage_avg, marker='o', color='blue', linestyle='None')
-    plt.plot(sync_coverage_avg, marker='o', color='red', linestyle='None')
-    # plt.hlines(y=0, xmin=-0.1, xmax=1, color=colors[4], linestyles=(0, (1, 5)))
-    # plt.xlim([-0.1, 1])
-    plt.ylim([0,1])
+    plt.plot(ratio_to_percent_lst(mini_coverage_avg), marker='o', color='blue', linestyle='None')
+    plt.plot(ratio_to_percent_lst(sync_coverage_avg), marker='o', color='red', linestyle='None')
+    plt.ylim([0,100])
     plt.xticks(xi, x)
     plt.legend(["Minimizers", "Syncmers"])
     plt.title(
         "Comparison of percentage of covered sequence between minimizer\n and syncmer methods at different error rates")
+    plt.xlabel("Error rate")
+    plt.ylabel("Percentage of covered sequence")
     plt.savefig("covered_seq_minis_vs_syncs")
+    plt.show()
+
+    plt.plot(mini_covered_per_kmer_avg, marker='o', color='blue', linestyle='None')
+    plt.plot(sync_covered_per_kmer_avg, marker='o', color='red', linestyle='None')
+    plt.xticks(xi, x)
+    plt.legend(["Minimizers", "Syncmers"])
+    plt.title(
+        "Comparison of percentage of covered sequence PER KMER between minimizer\n and syncmer methods at different error rates")
+    plt.xlabel("Error rate")
+    plt.ylabel("Number of mers covered per kmer")
+    plt.savefig("covered_per_kmer_minis_vs_syncs")
     plt.show()
 
 
