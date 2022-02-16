@@ -89,6 +89,7 @@ def ratio_to_percent_lst(lst):
     return res_lst
 
 # code taken from https://matplotlib.org/2.0.2/examples/pylab_examples/barchart_demo.html
+# used to generate barplots side by side from two different datasets
 def get_barplot_two_datasets(data1, data2, n_groups):
     index = np.arange(n_groups)
     fig, ax = plt.subplots()
@@ -108,6 +109,7 @@ def get_barplot_two_datasets(data1, data2, n_groups):
                      label='Syncmers')
     plt.legend()
 
+# used to generate boxplots side by side from two different datasets
 def get_boxplot_two_datasets(data1,data2):
     fig = plt.figure(1, figsize=(9, 6))
     ax = fig.add_subplot(111)
@@ -140,8 +142,9 @@ def main():
     t = 1
     n = 10
 
+    # separate test for ratio of number of syncmers to number of minimizers
+    # should be function
     '''
-    # test for ratio of number of syncmers to number of minimizers
     nr_of_mini = 0
     nr_of_sync = 0
     for i in range(n):
@@ -159,6 +162,7 @@ def main():
     exit()
     '''
 
+    # keep track of number of minimizers and syncmers
     nr_of_mini = 0
     nr_of_sync = 0
 
@@ -169,9 +173,11 @@ def main():
     mini_preserved_ratio = []
     sync_preserved_ratio = []
 
+    # not actually used in this analysis
     opt_indices_mini = []
     opt_indices_sync = []
 
+    # results of the isONcorrect interval score, which is used to statistically error correct sequences
     score_mini_avg = []
     score_sync_avg = []
 
@@ -196,6 +202,7 @@ def main():
 
 
         # iterate n times to get n different ratios for the same error level
+        # these will be averaged to get a somewhat "fair" result statistically
         for i in range(n):
             seq = generateTestCasesAlt.generate_random_sequence_by_length(seq_len)
             seq_error = generate_error_sequence(seq, round((error+1)/100, 2))
@@ -295,6 +302,7 @@ def main():
     mini_covered_per_kmer_avg = get_list_averages(mini_covered_per_kmer,n)
     sync_covered_per_kmer_avg = get_list_averages(sync_covered_per_kmer, n)
 
+    # print out parameters and avg k-mers which are included in the result
     print("#BP: " + str(seq_len))
     print("k: " + str(k))
     print("w: " + str(w))
@@ -306,6 +314,7 @@ def main():
     print("ratio #syncmers/#minimizers: " + str(round(nr_of_sync/nr_of_mini,2)))
 
 
+    # doing some magic to make the plots work
     x = []
     for i in range(10):
         x.append(str(i+1)+"%")
